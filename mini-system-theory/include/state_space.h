@@ -26,4 +26,11 @@ void ss_print(StateSpace* ss);
 StateSpace* ss_create_mass_spring_damper(double m, double c, double k);
 StateSpace* ss_create_pid_plant(double K, double tau);
 
+/* L8: Gramians and structural properties */
+double** ss_controllability_gramian(StateSpace* ss);
+double** ss_observability_gramian(StateSpace* ss);
+void ss_free_gramian(double** Wc, int n);
+int ss_is_controllable(StateSpace* ss);
+int ss_is_observable(StateSpace* ss);
+
 #endif

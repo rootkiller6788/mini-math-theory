@@ -110,9 +110,10 @@ static void test_mod_pow_identity(void) {
 }
 
 static void test_mod_pow_large(void) {
-    TEST("7^256 mod 1000 = 1 (by Euler, φ(1000)=400, but 7^400≡1)");
+    TEST("7^256 mod 1000 (fast exponentiation check)");
     long long result = mod_pow(7, 256, 1000);
-    CHECK_INT_EQ(result, 1, "7^256 mod 1000");
+    /* 7^256 mod 1000 = 601 (verified: 7^4=2401≡401, etc.) */
+    CHECK_INT_EQ(result, 601, "7^256 mod 1000");
 }
 
 static void test_is_prime_small(void) {

@@ -266,9 +266,10 @@ static void test_3var_complex(void) {
     int q_r = formula_add_implies(f, q, r);
     int root = formula_add_and(f, p_q, q_r);
 
-    // (p→q)∧(q→r) is true except when (p=T,q=T,r=F) or (p=T,q=F,*)
-    // row: pqr=000→T, 001→T, 010→F, 011→F, 100→T, 101→T, 110→T, 111→T
-    bool expected[] = {true, true, false, false, true, true, true, true};
+    // (p→q)∧(q→r): true when both implications true.
+    // p→q is false only when p=T,q=F. q→r is false only when q=T,r=F.
+    // row: pqr=000→T, 001→T, 010→F(q→r F), 011→T, 100→F(p→q F), 101→F(p→q F), 110→F(q→r F), 111→T
+    bool expected[] = {true, true, false, true, false, false, false, true};
     CHECK(eval_all_assignments(f, root, expected),
           "hypothetical syllogism premise mismatch");
     free(f);

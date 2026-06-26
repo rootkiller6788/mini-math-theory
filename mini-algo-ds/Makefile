@@ -22,7 +22,7 @@ EX_BINS   := $(patsubst $(EX_DIR)/%.c, $(BUILD_DIR)/ex_%, $(EXAMPLES))
 all: dirs $(OBJS) $(TEST_BINS) $(EX_BINS)
 
 dirs:
-	@if not exist "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
+	@mkdir -p "$(BUILD_DIR)"
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(INC_DIR)/%.h
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -47,7 +47,7 @@ test: all
 	@for t in $(TEST_BINS); do echo --- $$t ---; $$t; done
 
 clean:
-	@if exist "$(BUILD_DIR)" rmdir /s /q "$(BUILD_DIR)"
+	@rm -rf "$(BUILD_DIR)"
 	@echo Clean complete.
 
 debug: CFLAGS = -Wall -Wextra -std=c99 $(DBG_FLAGS) -Iinclude

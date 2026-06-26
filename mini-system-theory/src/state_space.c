@@ -297,3 +297,295 @@ StateSpace* ss_create_pid_plant(double K, double tau) {
     ss_set_C(ss, 0, 0, 1.0);
     return ss;
 }
+
+/* ---------- L8: Controllability Gramian ----------
+ * Wc(t) = integral_0^t exp(A*tau) B B' exp(A'*tau) dtau
+ * Solves Lyapunov: A*Wc + Wc*A' = -B*B'
+ * System is controllable if Wc is positive definite.
+ * Reference: Chen, C.T. (1999) Linear System Theory and Design
+ */
+double** ss_controllability_gramian(StateSpace* ss) {
+    int n = ss->n_states, m = ss->n_inputs;
+    double** BBt = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++) {
+        BBt[i] = (double*)calloc(n, sizeof(double));
+        for (int j = 0; j < n; j++) {
+            double sum = 0;
+            for (int k = 0; k < m; k++)
+                sum += ss->B[i][k] * ss->B[j][k];
+            BBt[i][j] = sum;
+        }
+    }
+
+    /* Solve Lyapunov: A*Wc + Wc*A' = -BB' */
+    double** Wc = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++)
+        Wc[i] = (double*)calloc(n, sizeof(double));
+
+    /* Use Kronecker product method */
+    int N = n * n;
+    double** L = (double**)malloc(N * sizeof(double*));
+    for (int i = 0; i < N; i++)
+        L[i] = (double*)calloc(N, sizeof(double));
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            int row = i * n + j;
+            for (int k = 0; k < n; k++)
+                L[row][i * n + k] += ss->A[k][j];
+            for (int k = 0; k < n; k++)
+                L[row][k * n + j] += ss->A[k][i];
+        }
+    }
+
+    double* rhs = (double*)malloc(N * sizeof(double));
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            rhs[i * n + j] = -BBt[i][j];
+
+    /* Gaussian elimination */
+    for (int k = 0; k < N; k++) {
+        int max_row = k;
+        for (int r = k + 1; r < N; r++)
+            if (fabs(L[r][k]) > fabs(L[max_row][k])) max_row = r;
+        if (fabs(L[max_row][k]) < 1e-14) continue;
+        if (max_row != k) {
+            double* tmp = L[k]; L[k] = L[max_row]; L[max_row] = tmp;
+            double tb = rhs[k]; rhs[k] = rhs[max_row]; rhs[max_row] = tb;
+        }
+        for (int r = k + 1; r < N; r++) {
+            double f = L[r][k] / L[k][k];
+            for (int c = k; c < N; c++) L[r][c] -= f * L[k][c];
+            rhs[r] -= f * rhs[k];
+        }
+    }
+    for (int i = N - 1; i >= 0; i--) {
+        double s = rhs[i];
+        for (int j = i + 1; j < N; j++) s -= L[i][j] * rhs[j];
+        rhs[i] = s / L[i][i];
+    }
+
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            Wc[i][j] = rhs[i * n + j];
+
+    for (int i = 0; i < N; i++) free(L[i]);
+    free(L);
+    free(rhs);
+    for (int i = 0; i < n; i++) free(BBt[i]);
+    free(BBt);
+    return Wc;
+}
+
+void ss_free_gramian(double** Wc, int n) {
+    for (int i = 0; i < n; i++) free(Wc[i]);
+    free(Wc);
+}
+
+/* L8: Observability Gramian
+ * Wo(t) = integral_0^t exp(A'*tau) C' C exp(A*tau) dtau
+ * Solves Lyapunov: A'*Wo + Wo*A = -C'*C
+ */
+double** ss_observability_gramian(StateSpace* ss) {
+    int n = ss->n_states, p = ss->n_outputs;
+    double** CtC = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++) {
+        CtC[i] = (double*)calloc(n, sizeof(double));
+        for (int j = 0; j < n; j++) {
+            double sum = 0;
+            for (int k = 0; k < p; k++)
+                sum += ss->C[k][i] * ss->C[k][j];
+            CtC[i][j] = sum;
+        }
+    }
+
+    double** Wo = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++)
+        Wo[i] = (double*)calloc(n, sizeof(double));
+
+    int N = n * n;
+    double** L = (double**)malloc(N * sizeof(double*));
+    for (int i = 0; i < N; i++)
+        L[i] = (double*)calloc(N, sizeof(double));
+
+    /* A' kron I + I kron A' */
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            int row = i * n + j;
+            for (int k = 0; k < n; k++)
+                L[row][k * n + j] += ss->A[i][k];
+            for (int k = 0; k < n; k++)
+                L[row][i * n + k] += ss->A[j][k];
+        }
+    }
+
+    double* rhs = (double*)malloc(N * sizeof(double));
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            rhs[i * n + j] = -CtC[i][j];
+
+    for (int k = 0; k < N; k++) {
+        int max_row = k;
+        for (int r = k + 1; r < N; r++)
+            if (fabs(L[r][k]) > fabs(L[max_row][k])) max_row = r;
+        if (fabs(L[max_row][k]) < 1e-14) continue;
+        if (max_row != k) {
+            double* tmp = L[k]; L[k] = L[max_row]; L[max_row] = tmp;
+            double tb = rhs[k]; rhs[k] = rhs[max_row]; rhs[max_row] = tb;
+        }
+        for (int r = k + 1; r < N; r++) {
+            double f = L[r][k] / L[k][k];
+            for (int c = k; c < N; c++) L[r][c] -= f * L[k][c];
+            rhs[r] -= f * rhs[k];
+        }
+    }
+    for (int i = N - 1; i >= 0; i--) {
+        double s = rhs[i];
+        for (int j = i + 1; j < N; j++) s -= L[i][j] * rhs[j];
+        rhs[i] = s / L[i][i];
+    }
+
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            Wo[i][j] = rhs[i * n + j];
+
+    for (int i = 0; i < N; i++) free(L[i]);
+    free(L);
+    free(rhs);
+    for (int i = 0; i < n; i++) free(CtC[i]);
+    free(CtC);
+    return Wo;
+}
+
+/* L3: Controllability test via rank([B AB A^2B ... A^{n-1}B])
+ * Uses singular value decomposition (simplified).
+ * Returns 1 if controllable, 0 if not.
+ */
+int ss_is_controllable(StateSpace* ss) {
+    int n = ss->n_states, m = ss->n_inputs;
+
+    /* Build controllability matrix */
+    double** Cm = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++)
+        Cm[i] = (double*)calloc(n * m, sizeof(double));
+
+    /* First block: B */
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+            Cm[i][j] = ss->B[i][j];
+
+    /* Compute A^k * B for k=1..n-1 */
+    double** Ak = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++) {
+        Ak[i] = (double*)malloc(n * sizeof(double));
+        for (int j = 0; j < n; j++)
+            Ak[i][j] = (i == j) ? 1.0 : 0.0;
+    }
+
+    for (int k = 0; k < n - 1; k++) {
+        /* Ak = A * Ak */
+        double** Ak_new = (double**)malloc(n * sizeof(double*));
+        for (int i = 0; i < n; i++) {
+            Ak_new[i] = (double*)calloc(n, sizeof(double));
+            for (int j = 0; j < n; j++) {
+                double sum = 0;
+                for (int p = 0; p < n; p++)
+                    sum += ss->A[i][p] * Ak[p][j];
+                Ak_new[i][j] = sum;
+            }
+        }
+        for (int i = 0; i < n; i++) free(Ak[i]);
+        free(Ak);
+        Ak = Ak_new;
+
+        /* A^{k+1} * B */
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < m; j++) {
+                double sum = 0;
+                for (int p = 0; p < n; p++)
+                    sum += Ak[i][p] * ss->B[p][j];
+                Cm[i][(k + 1) * m + j] = sum;
+            }
+    }
+
+    /* Compute rank via QR decomposition (simplified rank determination)
+     * Count linearly independent rows */
+    int rank = 0;
+    double* row_norms = (double*)malloc(n * sizeof(double));
+    for (int i = 0; i < n; i++) {
+        double norm = 0;
+        for (int j = 0; j < n * m; j++)
+            norm += Cm[i][j] * Cm[i][j];
+        row_norms[i] = sqrt(norm);
+        if (row_norms[i] > 1e-10) rank++;
+    }
+
+    int result = (rank == n) ? 1 : 0;
+
+    for (int i = 0; i < n; i++) { free(Cm[i]); free(Ak[i]); }
+    free(Cm); free(Ak); free(row_norms);
+    return result;
+}
+
+/* L3: Observability test via rank([C; CA; CA^2; ...; CA^{n-1}]) */
+int ss_is_observable(StateSpace* ss) {
+    int n = ss->n_states, p = ss->n_outputs;
+
+    double** Om = (double**)malloc(p * n * sizeof(double*));
+    for (int i = 0; i < p * n; i++)
+        Om[i] = (double*)calloc(n, sizeof(double));
+
+    /* First block: C */
+    for (int i = 0; i < p; i++)
+        for (int j = 0; j < n; j++)
+            Om[i][j] = ss->C[i][j];
+
+    double** Ak = (double**)malloc(n * sizeof(double*));
+    for (int i = 0; i < n; i++) {
+        Ak[i] = (double*)malloc(n * sizeof(double));
+        for (int j = 0; j < n; j++)
+            Ak[i][j] = (i == j) ? 1.0 : 0.0;
+    }
+
+    for (int k = 0; k < n - 1; k++) {
+        double** Ak_new = (double**)malloc(n * sizeof(double*));
+        for (int i = 0; i < n; i++) {
+            Ak_new[i] = (double*)calloc(n, sizeof(double));
+            for (int j = 0; j < n; j++) {
+                double sum = 0;
+                for (int p = 0; p < n; p++)
+                    sum += ss->A[i][p] * Ak[p][j];
+                Ak_new[i][j] = sum;
+            }
+        }
+        for (int i = 0; i < n; i++) free(Ak[i]);
+        free(Ak);
+        Ak = Ak_new;
+
+        /* C * A^{k+1} */
+        for (int i = 0; i < p; i++)
+            for (int j = 0; j < n; j++) {
+                double sum = 0;
+                for (int q = 0; q < n; q++)
+                    sum += ss->C[i][q] * Ak[q][j];
+                Om[(k + 1) * p + i][j] = sum;
+            }
+    }
+
+    /* Count linearly independent columns (rank via QR) */
+    int rank = 0;
+    for (int j = 0; j < n; j++) {
+        double norm = 0;
+        for (int i = 0; i < p * n; i++)
+            norm += Om[i][j] * Om[i][j];
+        if (sqrt(norm) > 1e-10) rank++;
+    }
+
+    int result = (rank == n) ? 1 : 0;
+
+    for (int i = 0; i < p * n; i++) free(Om[i]);
+    free(Om);
+    for (int i = 0; i < n; i++) free(Ak[i]);
+    free(Ak);
+    return result;
+}

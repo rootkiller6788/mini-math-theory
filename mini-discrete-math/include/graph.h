@@ -43,4 +43,40 @@ int graph_coloring_greedy(Graph* g, int color[MAX_VERTICES]);
 bool has_euler_circuit(Graph* g);
 void find_euler_circuit(Graph* g, int* path, int* path_len);
 
+/* Minimum Spanning Tree (Kruskal's greedy + Union-Find, Prim's) */
+void kruskal_mst(Graph* g, int edges_out[MAX_VERTICES][2], int* nedges_out);
+int prim_mst(Graph* g, int parent[MAX_VERTICES]);
+
+/* Strongly Connected Components (Kosaraju's two-pass, Tarjan's one-pass) */
+void kosaraju_scc(Graph* g, int component[MAX_VERTICES], int* ncomp);
+void tarjan_scc(Graph* g, int component[MAX_VERTICES], int* ncomp);
+
+/* Articulation Points (Tarjan-like DFS low-link) */
+void articulation_points(Graph* g, bool is_ap[MAX_VERTICES]);
+
+/* Bridges in undirected graph */
+void bridges_find(Graph* g, int bridges_out[MAX_VERTICES][2], int* nbridges);
+
+/* Max Flow (Ford-Fulkerson with DFS augmenting paths) */
+int ford_fulkerson_maxflow(int capacity[MAX_VERTICES][MAX_VERTICES], int n,
+                           int source, int sink);
+
+/* Hamiltonian Cycle (backtracking search) */
+bool hamiltonian_cycle(Graph* g, int path[MAX_VERTICES]);
+
+/* Travelling Salesman approximation (MST-based 2-approximation) */
+int tsp_mst_2approx(Graph* g, int tour[MAX_VERTICES]);
+
+/* Graph diameter (all-pairs shortest path based) */
+int graph_diameter(Graph* g);
+
+/* Maximum matching in bipartite graph (DFS augmenting path) */
+int bipartite_max_matching(Graph* g, int match[MAX_VERTICES]);
+
+/* Planarity: Kuratowski-based check for K5/K3,3 minors (simple heuristic) */
+bool is_planar_heuristic(Graph* g);
+
+/* Transitive reduction (minimal graph with same reachability) */
+void transitive_reduction(Graph* g, Graph* result);
+
 #endif

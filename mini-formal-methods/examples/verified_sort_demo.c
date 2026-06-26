@@ -1,4 +1,4 @@
-#define CONTRACT_CHECK
+/* CONTRACT_CHECK defined via Makefile CFLAGS */
 #include "contracts.h"
 #include "assertions.h"
 #include "spec.h"
@@ -37,7 +37,7 @@ bool is_permutation(int a[], int b[], int n) {
 }
 
 bool sort_pre_valid_input(void* input) {
-    int* arr = ((int**)input)[0];
+    (void)((int**)input)[0];
     int n = *((int*)((int**)input)[1]);
     return n > 0 && n < 1024;
 }
@@ -69,7 +69,6 @@ int main(void) {
     printf("--- 1. Postcondition: sorted ---\n");
     int input1[] = {5, 2, 8, 1, 9, 3};
     int n1 = 6;
-    int output1[6];
 
     bubble_sort(input1, n1);
     bool sorted = is_sorted(input1, n1);

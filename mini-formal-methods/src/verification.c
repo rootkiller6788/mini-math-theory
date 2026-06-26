@@ -69,6 +69,7 @@ bool bmc_check(StateMachine* sm,
                bool (*property)(int state),
                int bound,
                BMCResult* result) {
+    (void)result;  /* reserved for trace output in future extensions */
     static int queue[MAX_STATES * MAX_BMC_STEPS];
     static int parent[MAX_STATES * MAX_BMC_STEPS];
     static bool visited[MAX_BMC_STEPS][MAX_STATES];

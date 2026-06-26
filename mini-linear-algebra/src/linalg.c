@@ -100,7 +100,6 @@ static int rank_from_lu(const Matrix* A_copy) {
 
 double mat_rank(Matrix* m) {
     int n = m->rows;
-    int p = m->cols;
     Matrix* A = mat_clone(m);
     int* pivot = (int*)malloc(n * sizeof(int));
     bool ok = decompose_lu(A, pivot);

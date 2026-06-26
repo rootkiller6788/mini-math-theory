@@ -65,6 +65,11 @@ int main(void)
         printf("  Element %d belongs to set rooted at %d\n", i, root);
     }
 
+    /* Print parent array using utility function */
+    int parents[10];
+    for (int i = 0; i < n; i++) parents[i] = uf_find(uf, i);
+    print_array("Parent roots", parents, n);
+
     uf_free(uf);
     return 0;
 }

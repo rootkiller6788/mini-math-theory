@@ -60,4 +60,72 @@ void circuit_init(LogicCircuit* circuit, int ninputs);
 int circuit_add_gate(LogicCircuit* circuit, GateType type, int in1, int in2);
 void circuit_evaluate(LogicCircuit* circuit, const bool* inputs, bool* outputs, int ngates);
 
+/* Quine-McCluskey with don't-care terms */
+typedef struct {
+    int minterms[1 << MAX_BOOL_VARS];
+    int n_minterms;
+    int dont_cares[1 << MAX_BOOL_VARS];
+    int n_dont_cares;
+    int nvars;
+} QMInput;
+
+typedef struct {
+    int terms[256][MAX_BOOL_VARS];   /* -1=absent, 0=0, 1=1 */
+    int n_terms;
+} QMOutput;
+
+/* Full Quine-McCluskey algorithm */
+QMOutput quine_mccluskey_solve(QMInput* input);
+char* qm_output_to_string(QMOutput* out, int nvars);
+
+/* Multi-level logic optimization: factor common sub-expressions */
+typedef struct {
+    char expr[1024];   /* simplified multi-level expression */
+    int literal_count;  /* # literals in optimized form */
+} MLLevelOpt;
+
+MLLevelOpt multi_level_optimize(SOP* sop, int nvars);
+
+/* Binary Decision Diagram (BDD) — reduced ordered BDD basics */
+#define BDD_MAX_NODES 1024
+
+typedef struct BDDNode {
+    int var;             /* variable index (0..nvars-1), or -1 for terminal */
+    int low;             /* child when var=0 (node index or 0/1 constant) */
+    int high;            /* child when var=1 */
+    int id;
+} BDDNode;
+
+typedef struct {
+    BDDNode nodes[BDD_MAX_NODES];
+    int n_nodes;
+    int nvars;
+    int var_order[MAX_BOOL_VARS]; /* variable ordering */
+} BDD;
+
+BDD* bdd_create(int nvars);
+int bdd_make_node(BDD* bdd, int var, int low, int high);
+int bdd_apply_and(BDD* bdd, int f, int g);
+int bdd_apply_or(BDD* bdd, int f, int g);
+int bdd_apply_not(BDD* bdd, int f);
+int bdd_from_truth_table(BDD* bdd, BoolFunction* bf);
+bool bdd_evaluate(BDD* bdd, int root, const bool* assign);
+int bdd_sat_count(BDD* bdd, int root);
+void bdd_free(BDD* bdd);
+
+/* Boolean function equivalence checking via SAT */
+bool bool_equiv_check(BoolFunction* a, BoolFunction* b);
+
+/* Functional completeness: check if gate set is functionally complete */
+bool is_functionally_complete(GateType gates[], int n_gates);
+
+/* Shannon's Expansion: f = (x ∧ f_x) ∨ (¬x ∧ f_¬x) */
+void shannon_expand(BoolFunction* bf, int var, BoolFunction* f_positive, BoolFunction* f_negative);
+
+/* Boolean difference ∂f/∂x: f(x=0) ⊕ f(x=1) */
+bool boolean_derivative(BoolFunction* bf, int var, const bool* assign);
+
+/* Rademacher-Walsh spectrum of boolean function */
+void walsh_spectrum(BoolFunction* bf, int spectrum[]);
+
 #endif

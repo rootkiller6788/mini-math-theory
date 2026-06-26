@@ -1,4 +1,4 @@
-#define CONTRACT_CHECK
+/* CONTRACT_CHECK defined via Makefile CFLAGS */
 #include "contracts.h"
 #include "spec.h"
 #include <stdio.h>
@@ -62,11 +62,13 @@ typedef struct { Stack* s; int val; } PushInput;
 typedef struct { int result; } PopOutput;
 
 bool stack_post_push(void* input_raw, void* output_raw) {
+    (void)output_raw;
     PushInput* in = (PushInput*)input_raw;
     return in->s->data[in->s->top - 1] == in->val;
 }
 
 bool stack_post_pop(void* input_raw, void* output_raw) {
+    (void)input_raw;
     PopOutput* out = (PopOutput*)output_raw;
     return out->result >= INT_MIN;
 }

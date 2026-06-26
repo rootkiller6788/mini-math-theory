@@ -1,4 +1,4 @@
-#define CONTRACT_CHECK
+/* CONTRACT_CHECK defined via Makefile CFLAGS */
 #include "contracts.h"
 #include "invariants.h"
 #include <stdio.h>

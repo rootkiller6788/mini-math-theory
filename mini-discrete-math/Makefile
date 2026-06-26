@@ -4,12 +4,16 @@ LDFLAGS = -lm
 
 SRCDIR = src
 OUTDIR = bin
+TESTDIR = tests
 
 SRCS = $(wildcard $(SRCDIR)/*.c)
 OBJS = $(SRCS:$(SRCDIR)/%.c=$(OUTDIR)/%.o)
 
 APPS = logic number set graph tree combo boolalg
 TARGETS = $(APPS:%=$(OUTDIR)/%)
+
+TESTS = test_logic test_number
+TEST_TARGETS = $(TESTS:%=$(OUTDIR)/%)
 
 .PHONY: all clean test
 
@@ -24,25 +28,35 @@ $(OUTDIR)/%.o: $(SRCDIR)/%.c | $(OUTDIR)
 $(OUTDIR)/logic: $(OUTDIR)/logic.o examples/logic_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-$(OUTDIR)/number: $(OUTDIR)/number.o examples/rsa_toy_demo.c | $(OUTDIR)
+$(OUTDIR)/number: $(OBJS) examples/rsa_toy_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-$(OUTDIR)/set: $(OUTDIR)/set.o $(OUTDIR)/relation.o examples/relation_demo.c | $(OUTDIR)
+$(OUTDIR)/set: $(OBJS) examples/relation_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-$(OUTDIR)/graph: $(OUTDIR)/graph.o examples/graph_demo.c | $(OUTDIR)
+$(OUTDIR)/graph: $(OBJS) examples/graph_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-$(OUTDIR)/tree: $(OUTDIR)/tree.o examples/huffman_demo.c | $(OUTDIR)
+$(OUTDIR)/tree: $(OBJS) examples/huffman_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-$(OUTDIR)/combo: $(OUTDIR)/combo.o examples/combo_demo.c | $(OUTDIR)
+$(OUTDIR)/combo: $(OBJS) examples/combo_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-$(OUTDIR)/boolalg: $(OUTDIR)/boolalg.o examples/circuit_demo.c | $(OUTDIR)
+$(OUTDIR)/boolalg: $(OBJS) examples/circuit_demo.c | $(OUTDIR)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-test: all
+# Test targets
+$(OUTDIR)/test_logic: $(OBJS) $(TESTDIR)/test_logic.c | $(OUTDIR)
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
+
+$(OUTDIR)/test_number: $(OBJS) $(TESTDIR)/test_number.c | $(OUTDIR)
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
+
+test: all $(TEST_TARGETS)
+	@echo "====== Unit Tests ======"
+	@for t in $(TESTS); do echo "=== $$t ==="; $(OUTDIR)/$$t; echo; done
+	@echo "====== Integration Demos ======"
 	@for t in $(APPS); do echo "=== $$t ==="; $(OUTDIR)/$$t; echo; done
 
 clean:
